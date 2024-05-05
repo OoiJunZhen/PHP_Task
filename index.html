@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Number</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="login-dark">
+        <form id="numberForm" method="post" action="php/insert_num.php">
+            <h2>Random Number Matching</h2>
+            <div class="random-number" id="randomNumberDisplay">00000</div>
+            <div class="input-field">
+                <label for="userNumber">Enter a 5-digit number:</label>
+                <div class="form-group"><input id="userNumber" class="form-control" type="number" maxlength="5"
+                        placeholder="Enter a 5-digit number"></div>
+            </div>
+            <button type="button" class="btn btn-primary btn-block" id="startCollectionBtn">Start Data Collection</button>
+            <div class="output-field" id="collectionStatus"></div>
+            <div class="output-field" id="matchingResults"></div>
+        </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Function to generate a random number between 10000 and 99999
+        function generateRandomNumber() {
+            return Math.floor(Math.random() * 90000) + 10000;
+        }
+    
+        // Function to update the random number display every second
+        function updateRandomNumberDisplay() {
+            setInterval(function() {
+                document.getElementById("randomNumberDisplay").innerText = generateRandomNumber();
+            }, 1000);
+        }
+
+        // Start updating random number display
+        updateRandomNumberDisplay();
+
+        // Event listener for starting data collection
+        document.getElementById("startCollectionBtn").addEventListener("click", function() {
+            let collectedData = [];
+            let intervalCount = 0;
+
+            // Function to capture the last digit of the random number every minute
+            let dataCollectionInterval = setInterval(function() {
+                let randomNumber = document.getElementById("randomNumberDisplay").innerText;
+                let lastDigit = randomNumber % 10;
+                collectedData.push(lastDigit);
+                intervalCount++;
+
+                // Update collection status
+                document.getElementById("collectionStatus").innerText = "Collecting data... Interval " + intervalCount + "/5";
+
+                // Stop data collection after 5 minutes (5 intervals)
+                if (intervalCount === 5) {
+                    clearInterval(dataCollectionInterval);
+                    document.getElementById("collectionStatus").innerText = "Data collection complete";
+
+                    // Send collected data to backend for storage as one transaction
+                    $.ajax({
+                        url: "php/insert_num.php",
+                        type: "POST",
+                        data: {
+                            userNumber: document.getElementById("userNumber").value,
+                            collectedData: JSON.stringify(collectedData)
+                        },
+                        success: function(response) {
+                            console.log(response);
+                        },
+                        error: function(xhr, status, error) {
+                            console.error(xhr.responseText);
+                        }
+                    });
+
+                    // Perform matching and display results
+                    let userInput = document.getElementById("userNumber").value;
+                    matchNumbers(userInput, collectedData);
+                }
+            }, 60000); // 1 minute interval
+        });
+
+        // Function to match the keyed-in number with the formed number
+        function matchNumbers(userInput, collectedData) {
+            // Convert user input to array of digits
+            let userInputDigits = userInput.split('').map(Number);
+
+            // Match number of digits
+            let numDigitsMatch = userInputDigits.length === collectedData.length;
+
+            // Check for continuous digits
+            let continuousDigitsMatch = true;
+            for (let i = 0; i < collectedData.length - 1; i++) {
+                if (collectedData[i] !== (collectedData[i + 1] + 1) % 10) {
+                    continuousDigitsMatch = false;
+                    break;
+                }
+            }
+
+            // Check for permutation match
+            let sortedUserInput = userInputDigits.sort().join('');
+            let sortedCollectedData = collectedData.sort().join('');
+            let permutationMatch = sortedUserInput === sortedCollectedData;
+
+            // Display matching results
+            let matchingResults = document.getElementById("matchingResults");
+            matchingResults.innerHTML = "<h3>Matching Results:</h3>";
+            matchingResults.innerHTML += "<p>Number of digits match: " + numDigitsMatch + "</p>";
+            matchingResults.innerHTML += "<p>Continuous digits match: " + continuousDigitsMatch + "</p>";
+            matchingResults.innerHTML += "<p>Permutation match: " + permutationMatch + "</p>";
+        }
+    </script>
+</body>
+
+</html>
