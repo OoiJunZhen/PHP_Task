@@ -48,6 +48,8 @@
             let collectedData = [];
             let intervalCount = 0;
 
+            document.getElementById("collectionStatus").innerText = "Collection Start...";
+
             // Function to capture the last digit of the random number every minute
             let dataCollectionInterval = setInterval(function() {
                 let randomNumber = document.getElementById("randomNumberDisplay").innerText;
